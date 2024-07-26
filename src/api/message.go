@@ -16,6 +16,7 @@ import (
 
 func InitMessageRoutes(router *mux.Router, pool *pgxpool.Pool, log *logrus.Logger) {
 	router.HandleFunc("/message", createMessage(pool, log)).Methods("POST")
+	router.HandleFunc("/message/stats", getMessageStats(pool, log)).Methods("GET")
 }
 
 func createMessage(pool *pgxpool.Pool, log *logrus.Logger) http.HandlerFunc {
@@ -67,9 +68,34 @@ func createMessage(pool *pgxpool.Pool, log *logrus.Logger) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		resp := entities.CreateMessageResponse{
+		resp := entities.Response{Data: entities.CreateMessageResponse{
 			MessageId: message_id,
+		}}
+		json.NewEncoder(w).Encode(resp)
+	}
+}
+
+func getMessageStats(pool *pgxpool.Pool, log *logrus.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		stats, err := services.GetMessageStat(
+			r.Context(),
+			pool,
+			log,
+		)
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			resp := entities.Response{
+				Error: api_errors.InternalServerError{}.Error(),
+			}
+			json.NewEncoder(w).Encode(resp)
+			return
 		}
+
+		w.WriteHeader(http.StatusOK)
+		resp := entities.Response{Data: stats}
 		json.NewEncoder(w).Encode(resp)
 	}
 }

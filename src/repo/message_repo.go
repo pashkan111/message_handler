@@ -68,3 +68,56 @@ func UpdateMessage(
 	}
 	return nil
 }
+
+func GetMessageStats(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	log *logrus.Logger,
+) (*entities.GetMessagesStatResponse, error) {
+	conn, err := pool.Acquire(ctx)
+
+	if err != nil {
+		log.Error("Error with acquiring connection:", err)
+		return nil, repo_errors.OperationError{}
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(
+		ctx,
+		`
+		SELECT 
+			is_processed, COUNT(*)
+		FROM 
+			message
+		GROUP BY 
+			is_processed;
+		`,
+	)
+	if err != nil {
+		log.Error("Error with updating message:", err)
+		return nil, repo_errors.OperationError{}
+	}
+
+	var stats *entities.GetMessagesStatResponse
+
+	for rows.Next() {
+		var is_processed bool
+		var count int
+		err = rows.Scan(&is_processed, &count)
+		if err != nil {
+			log.Error("Error with scanning row:", err)
+			return nil, repo_errors.OperationError{}
+		}
+
+		if stats == nil {
+			stats = &entities.GetMessagesStatResponse{}
+		}
+
+		if is_processed {
+			stats.ProcessedCount = count
+		} else {
+			stats.UnProcessedCount = count
+		}
+	}
+	return stats, nil
+}

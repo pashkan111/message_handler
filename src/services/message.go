@@ -34,3 +34,16 @@ func CreateMessage(
 	}()
 	return message_id, nil
 }
+
+func GetMessageStat(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	log *logrus.Logger,
+) (*entities.GetMessagesStatResponse, error) {
+	stats, err := repo.GetMessageStats(ctx, pool, log)
+	if err != nil {
+		return nil, err
+	}
+	stats.TotalCount = stats.UnProcessedCount + stats.ProcessedCount
+	return stats, nil
+}
