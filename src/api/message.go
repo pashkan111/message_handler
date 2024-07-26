@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 	"messange_handler/src/entities"
 	"messange_handler/src/errors/api_errors"
 	"messange_handler/src/services"
@@ -21,17 +22,17 @@ func createMessage(pool *pgxpool.Pool, log *logrus.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		var message entities.CreateMessageRequest
-		err := json.NewDecoder(r.Body).Decode(&message)
+		data, err := io.ReadAll(r.Body)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusInternalServerError)
 			resp := entities.Response{
-				Error: api_errors.BadRequestError{Detail: err.Error()}.Error(),
+				Error: api_errors.InternalServerError{}.Error(),
 			}
 			json.NewEncoder(w).Encode(resp)
 			return
 		}
-		if message.Content == "" {
+
+		if data == nil {
 			w.WriteHeader(http.StatusBadRequest)
 			resp := entities.Response{
 				Error: api_errors.BadRequestError{Detail: "Content is required"}.Error(),
@@ -40,7 +41,7 @@ func createMessage(pool *pgxpool.Pool, log *logrus.Logger) http.HandlerFunc {
 			return
 		}
 
-		if !utils.IsValidJSON(message.Content) {
+		if !utils.IsValidJSON(data) {
 			w.WriteHeader(http.StatusBadRequest)
 			resp := entities.Response{
 				Error: api_errors.BadRequestError{Detail: "Content must be a valid JSON"}.Error(),
@@ -53,7 +54,7 @@ func createMessage(pool *pgxpool.Pool, log *logrus.Logger) http.HandlerFunc {
 			r.Context(),
 			pool,
 			log,
-			&message,
+			&entities.MessageFromRequest{Content: string(data)},
 		)
 
 		if err != nil {

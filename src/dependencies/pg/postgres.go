@@ -1,4 +1,4 @@
-package dependencies
+package pg
 
 import (
 	"fmt"
@@ -7,13 +7,10 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
 func GetPostgresPool(ctx context.Context, log *logrus.Logger) *pgxpool.Pool {
-	godotenv.Load()
-
 	postgresUrl := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s",
 		os.Getenv("PG_USER"),

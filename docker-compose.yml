@@ -14,31 +14,28 @@ services:
       - ${PG_PORT}:5432
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.0.1
-    container_name: zookeeper
+    image: confluentinc/cp-zookeeper:7.2.1
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - ./volumes/zookeeper_data:/var/lib/zookeeper/data
-      - ./volumes/zookeeper_datalog:/var/lib/zookeeper/log
+    ports:
+      - "2181:2181"
 
   kafka:
-    image: confluentinc/cp-kafka:7.0.1
-    container_name: kafka
-    ports:
-      - "${KAFKA_PORT}:9092"
+    image: confluentinc/cp-kafka:7.2.1
     depends_on:
       - zookeeper
+    ports:
+      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://broker:29092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_CREATE_TOPICS: ${KAFKA_MESSAGE_TOPIC_NAME}:1:1
-    volumes:
-      - ./volumes/kafka_data:/var/lib/kafka/data
+
+
 

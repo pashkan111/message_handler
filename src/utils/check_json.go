@@ -2,8 +2,8 @@ package utils
 
 import "encoding/json"
 
-func IsValidJSON(content string) bool {
+func IsValidJSON(content []byte) bool {
 	var message json.RawMessage
-	err := json.Unmarshal([]byte(content), &message)
+	err := json.Unmarshal(content, &message)
 	return err == nil
 }

@@ -1,7 +1,12 @@
 package entities
 
-type CreateMessageRequest struct {
-	Content string `json:"content"`
+type MessageFromRequest struct {
+	Content string
+}
+
+type MessageToProduce struct {
+	Content   string
+	MessageId int
 }
 
 type CreateMessageResponse struct {

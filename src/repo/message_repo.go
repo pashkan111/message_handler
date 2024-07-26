@@ -14,7 +14,7 @@ func CreateMessage(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	log *logrus.Logger,
-	message *entities.CreateMessageRequest,
+	message *entities.MessageFromRequest,
 ) (int, error) {
 	conn, err := pool.Acquire(ctx)
 
@@ -38,4 +38,33 @@ func CreateMessage(
 		return 0, repo_errors.OperationError{}
 	}
 	return message_id, nil
+}
+
+func UpdateMessage(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	log *logrus.Logger,
+	message_id int,
+) error {
+	conn, err := pool.Acquire(ctx)
+
+	if err != nil {
+		log.Error("Error with acquiring connection:", err)
+		return repo_errors.OperationError{}
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(
+		ctx,
+		`UPDATE message
+		SET is_processed = true
+		WHERE message_id = $1;
+		`,
+		message_id,
+	)
+	if err != nil {
+		log.Error("Error with updating message:", err)
+		return repo_errors.OperationError{}
+	}
+	return nil
 }
