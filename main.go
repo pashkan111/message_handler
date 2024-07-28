@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"messange_handler/src/api"
+	"messange_handler/src/consumers"
+	"messange_handler/src/dependencies/kafka"
 	"messange_handler/src/dependencies/logger"
 	"messange_handler/src/dependencies/pg"
-	"messange_handler/src/queue"
 	"net/http"
 	"os"
 	"strconv"
@@ -24,10 +25,13 @@ func main() {
 	log := logger.GetLogger()
 	postgres_pool := pg.GetPostgresPool(ctx, log)
 
-	queue.InitProducer(log)
+	kafka.InitProducer(log)
 
-	message_consumer := queue.MessageConsumer{Log: log}
+	message_consumer := consumers.MessageConsumer{Log: log}
 	message_consumer.Run(ctx, postgres_pool, log)
+
+	dead_queue_consumer := consumers.DeadQueueConsumer{Log: log}
+	dead_queue_consumer.Run(ctx, postgres_pool, log)
 
 	router := mux.NewRouter()
 	api.InitMessageRoutes(router, postgres_pool, log)

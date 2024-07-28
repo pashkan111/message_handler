@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  app:
+    build: .
+    ports:
+      - "${WEB_SERVER_PORT}:${WEB_SERVER_PORT}"
+    environment:
+      - WEB_SERVER_PORT=${WEB_SERVER_PORT}
+      - KAFKA_HOST=kafka
+      - KAFKA_PORT=9092
+      - KAFKA_MESSAGE_TOPIC_NAME=${KAFKA_MESSAGE_TOPIC_NAME}
+      - KAFKA_DEAD_QUEUE_TOPIC_NAME=${KAFKA_DEAD_QUEUE_TOPIC_NAME}
+      - KAFKA_MESSAGE_TOPIC_GROUP_ID=${KAFKA_MESSAGE_TOPIC_GROUP_ID}
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASSWORD}
+      - POSTGRES_DB=${PG_DATABASE}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+    depends_on:
+      - kafka-init
+      - db
+
   db:
     image: postgres:latest
     environment:
@@ -26,16 +46,32 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
+      - "${KAFKA_PORT}:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_CREATE_TOPICS: ${KAFKA_MESSAGE_TOPIC_NAME}:1:1
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-
-
+  kafka-init:
+    image: confluentinc/cp-kafka:7.2.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+    entrypoint: 
+      - /bin/sh
+      - -c
+      - |
+        kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic ${KAFKA_MESSAGE_TOPIC_NAME} &&
+        kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic ${KAFKA_DEAD_QUEUE_TOPIC_NAME} &&
+        sleep infinity

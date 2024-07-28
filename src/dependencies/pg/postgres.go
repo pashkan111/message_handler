@@ -2,9 +2,10 @@ package pg
 
 import (
 	"fmt"
-	"os"
 
 	"context"
+
+	"messange_handler/config"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/sirupsen/logrus"
@@ -13,11 +14,11 @@ import (
 func GetPostgresPool(ctx context.Context, log *logrus.Logger) *pgxpool.Pool {
 	postgresUrl := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s",
-		os.Getenv("PG_USER"),
-		os.Getenv("PG_PASSWORD"),
-		os.Getenv("PG_HOST"),
-		os.Getenv("PG_PORT"),
-		os.Getenv("PG_DATABASE"),
+		config.PostgresUser,
+		config.PostgresPassword,
+		config.PostgresHost,
+		config.PostgresPort,
+		config.PostgresDatabase,
 	)
 	config, err := pgxpool.ParseConfig(postgresUrl)
 	if err != nil {

@@ -1,8 +1,8 @@
-package queue
+package kafka
 
 import (
 	"fmt"
-	"os"
+	"messange_handler/config"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/sirupsen/logrus"
@@ -11,7 +11,7 @@ import (
 var producer *kafka.Producer
 
 func InitProducer(log *logrus.Logger) {
-	bootstrap_servers := fmt.Sprintf("%s:%s", os.Getenv("KAFKA_HOST"), os.Getenv("KAFKA_PORT"))
+	bootstrap_servers := fmt.Sprintf("%s:%s", config.KafkaHost, config.KafkaPort)
 
 	var err error
 	producer, err = kafka.NewProducer(&kafka.ConfigMap{
@@ -36,10 +36,12 @@ func InitProducer(log *logrus.Logger) {
 	}()
 }
 
-func ProduceMessage(message []byte) {
-	topic := os.Getenv("KAFKA_MESSAGE_TOPIC_NAME")
+func ProduceMessage(topic string, message []byte) {
 	producer.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value:          []byte(message),
+		TopicPartition: kafka.TopicPartition{
+			Topic:     &topic,
+			Partition: kafka.PartitionAny,
+		},
+		Value: []byte(message),
 	}, nil)
 }

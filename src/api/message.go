@@ -79,11 +79,7 @@ func getMessageStats(pool *pgxpool.Pool, log *logrus.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		stats, err := services.GetMessageStat(
-			r.Context(),
-			pool,
-			log,
-		)
+		stats, err := services.GetMessageStat(r.Context(), pool, log)
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

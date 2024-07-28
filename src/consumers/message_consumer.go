@@ -1,16 +1,16 @@
-package queue
+package consumers
 
 import (
 	"context"
 	"fmt"
-	"os"
 
-	"messange_handler/src/entities"
-	"messange_handler/src/repo"
+	"messange_handler/src/services"
+
+	producer "messange_handler/src/dependencies/kafka"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 
-	"encoding/json"
+	"messange_handler/config"
 
 	"github.com/sirupsen/logrus"
 
@@ -23,15 +23,13 @@ type MessageConsumer struct {
 }
 
 func (mc *MessageConsumer) InitConsumer() {
-	bootstrap_servers := fmt.Sprintf("%s:%s", os.Getenv("KAFKA_HOST"), os.Getenv("KAFKA_PORT"))
-	topic := os.Getenv("KAFKA_MESSAGE_TOPIC_NAME")
-	group_id := os.Getenv("KAFKA_MESSAGE_TOPIC_GROUP_ID")
+	bootstrap_servers := fmt.Sprintf("%s:%s", config.KafkaHost, config.KafkaPort)
 
 	var err error
 	mc.Consumer, err = kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":     bootstrap_servers,
-		"auto.offset.reset":     "latest",
-		"group.id":              group_id,
+		"auto.offset.reset":     "earliest",
+		"group.id":              config.MessageTopicGroupId,
 		"fetch.min.bytes":       1,
 		"session.timeout.ms":    6000,
 		"heartbeat.interval.ms": 2000,
@@ -40,7 +38,7 @@ func (mc *MessageConsumer) InitConsumer() {
 		mc.Log.Fatalf("Failed to create consumer: %s", err)
 	}
 
-	err = mc.Consumer.Subscribe(topic, nil)
+	err = mc.Consumer.Subscribe(config.MessageTopic, nil)
 	if err != nil {
 		mc.Log.Fatalf("Failed to subscribe to topic: %s", err)
 	}
@@ -53,29 +51,23 @@ func (mc *MessageConsumer) Run(
 ) {
 	mc.InitConsumer()
 	mc.Log.Info("Message Consumer is running")
+
 	go func() {
 		defer mc.Consumer.Close()
 		for {
 			msg, err := mc.Consumer.ReadMessage(-1)
 			if err != nil {
-				mc.Log.Fatalf("consumer error: %v (%v)\n", err, msg)
+				mc.Log.Errorf("error reading message: %v (%v)\n", err, msg)
 			}
 
-			// go func() {
-			var message entities.MessageToProduce
-			err = json.Unmarshal(msg.Value, &message)
-			if err != nil {
-				mc.Log.Errorf("Error with unmarshalling message: %s", err)
-			} else {
-				repo.UpdateMessage(
-					ctx,
-					pool,
-					log,
-					message.MessageId,
-				)
+			go func(msg *kafka.Message) {
+				err = services.UpdateMessage(ctx, pool, log, msg.Value)
+				if err != nil {
+					mc.Log.Errorf("error updating message: %v (%v)\n", err)
+					producer.ProduceMessage(config.DeadQueueTopic, msg.Value)
+				}
 
-			}
-			// }()
+			}(msg)
 		}
 	}()
 }
