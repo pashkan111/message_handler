@@ -94,8 +94,15 @@ func GetMessageStats(
 		`,
 	)
 	if err != nil {
-		log.Error("Error with updating message:", err)
+		log.Error("Error with obtaining statistics:", err)
 		return nil, repo_errors.OperationError{}
+	}
+	if len(rows.RawValues()) == 0 {
+		return &entities.GetMessagesStatResponse{
+			TotalCount:       0,
+			ProcessedCount:   0,
+			UnProcessedCount: 0,
+		}, nil
 	}
 
 	var stats *entities.GetMessagesStatResponse
